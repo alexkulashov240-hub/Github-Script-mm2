@@ -1,0 +1,1780 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local CORRECT_KEY = "1234512"
+local PREMIUM_KEYS = {["0912763AntiKikcV2"] = true, ["1321458"] = true}
+local isPremiumUnlocked = false
+
+local TOGGLE_MENU_KEY = Enum.KeyCode.L
+
+local espSettings = {
+    Enabled = false,
+    Highlight = false,
+    Boxes = false,
+    Names = false,
+    Distance = false,
+    Tracers = false
+}
+
+local antiSettings = {
+    AntiRvanka = false,
+    AntiTPMurder = false,
+    AntiTPSheriff = false,
+    AntiTPAll = false
+}
+
+-- Настройки Аимбота
+local aimbotSettings = {
+    Enabled = false,
+    Fov = 100,
+    ShowFov = true,
+    FovColor = Color3.fromRGB(255, 255, 255),
+    TargetPart = "Head" -- Head, Torso, LeftArm, RightArm, LeftLeg, RightLeg
+}
+
+local keybinds = {
+    TPGun = nil,
+    TPMurder = nil,
+    TPSheriff = nil,
+    TPRandom = nil,
+    Rvanka = nil,
+    AlwaysAnim = nil,
+    AutoGun = nil,
+    KnifeAura = nil,
+    MassKill = nil,
+    GunAura = nil,
+    Noclip = nil,
+    InfJump = nil,
+    Aimbot = nil
+}
+
+local selectedTargetPlayer = nil
+local bindingAction = nil
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LunixHubMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Визуализация FOV кольца для Аимбота
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Transparency = 0.7
+fovCircle.Thickness = 1.5
+fovCircle.NumSides = 64
+fovCircle.Filled = false
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+
+-- === ОКНО АВТОРИЗАЦИИ (LUXURY STYLE) ===
+local keySystemFrame = Instance.new("Frame")
+keySystemFrame.Name = "KeySystemFrame"
+keySystemFrame.Size = UDim2.new(0, 400, 0, 240)
+keySystemFrame.Position = UDim2.new(0.5, -200, 0.5, -120)
+keySystemFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
+keySystemFrame.BorderSizePixel = 0
+keySystemFrame.BackgroundTransparency = 1
+keySystemFrame.Parent = screenGui
+
+local ksCorner = Instance.new("UICorner") ksCorner.CornerRadius = UDim.new(0, 20) ksCorner.Parent = keySystemFrame
+local ksStroke = Instance.new("UIStroke") ksStroke.Color = Color3.fromRGB(80, 110, 255) ksStroke.Thickness = 2 ksStroke.Transparency = 1 ksStroke.Parent = keySystemFrame
+
+local ksTitle = Instance.new("TextLabel")
+ksTitle.Size = UDim2.new(1, 0, 0, 60)
+ksTitle.BackgroundTransparency = 1
+ksTitle.Text = "Lunix Hub • Authorization"
+ksTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ksTitle.TextSize = 20
+ksTitle.Font = Enum.Font.GothamBold
+ksTitle.TextTransparency = 1
+ksTitle.Parent = keySystemFrame
+
+local ksInfo = Instance.new("TextLabel")
+ksInfo.Size = UDim2.new(1, -40, 0, 30)
+ksInfo.Position = UDim2.new(0, 20, 0, 52)
+ksInfo.BackgroundTransparency = 1
+ksInfo.Text = "Введите лицензионный ключ доступа:"
+ksInfo.TextColor3 = Color3.fromRGB(150, 160, 180)
+ksInfo.TextSize = 13
+ksInfo.Font = Enum.Font.GothamMedium
+ksInfo.TextTransparency = 1
+ksInfo.Parent = keySystemFrame
+
+local keyTextBox = Instance.new("TextBox")
+keyTextBox.Size = UDim2.new(1, -40, 0, 46)
+keyTextBox.Position = UDim2.new(0, 20, 0, 92)
+keyTextBox.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+keyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyTextBox.PlaceholderText = "Введите ключ..."
+keyTextBox.PlaceholderColor3 = Color3.fromRGB(80, 90, 110)
+keyTextBox.TextSize = 14
+keyTextBox.Font = Enum.Font.Gotham
+keyTextBox.ClearTextOnFocus = false
+keyTextBox.BackgroundTransparency = 1
+keyTextBox.TextTransparency = 1
+keyTextBox.Parent = keySystemFrame
+
+local ktCorner = Instance.new("UICorner") ktCorner.CornerRadius = UDim.new(0, 12) ktCorner.Parent = keyTextBox
+local ktStroke = Instance.new("UIStroke") ktStroke.Color = Color3.fromRGB(40, 50, 70) ktStroke.Thickness = 1 ktStroke.Parent = keyTextBox
+
+local submitKeyBtn = Instance.new("TextButton")
+submitKeyBtn.Size = UDim2.new(1, -40, 0, 44)
+submitKeyBtn.Position = UDim2.new(0, 20, 0, 150)
+submitKeyBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 255)
+submitKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+submitKeyBtn.TextSize = 14
+submitKeyBtn.Font = Enum.Font.GothamBold
+submitKeyBtn.Text = "Подтвердить ключ"
+submitKeyBtn.BackgroundTransparency = 1
+submitKeyBtn.TextTransparency = 1
+submitKeyBtn.Parent = keySystemFrame
+
+local skCorner = Instance.new("UICorner") skCorner.CornerRadius = UDim.new(0, 12) skCorner.Parent = submitKeyBtn
+
+local errorLabel = Instance.new("TextLabel")
+errorLabel.Size = UDim2.new(1, 0, 0, 20)
+errorLabel.Position = UDim2.new(0, 0, 0, 205)
+errorLabel.BackgroundTransparency = 1
+errorLabel.Text = ""
+errorLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+errorLabel.TextSize = 12
+errorLabel.Font = Enum.Font.GothamBold
+errorLabel.TextTransparency = 1
+errorLabel.Parent = keySystemFrame
+
+local function fadeInKeySystem()
+    TweenService:Create(keySystemFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(ksStroke, TweenInfo.new(0.5), {Transparency = 0}):Play()
+    TweenService:Create(ksTitle, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+    TweenService:Create(ksInfo, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+    TweenService:Create(keyTextBox, TweenInfo.new(0.5), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+    TweenService:Create(submitKeyBtn, TweenInfo.new(0.5), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+    TweenService:Create(errorLabel, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+end
+task.spawn(fadeInKeySystem)
+
+-- === ОСНОВНОЕ МЕНЮ (LUNIX HUB ULTRA) ===
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 700, 0, 480)
+mainFrame.Position = UDim2.new(0.5, -350, 0.5, -240)
+mainFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner") frameCorner.CornerRadius = UDim.new(0, 18) frameCorner.Parent = mainFrame
+local dropShadow = Instance.new("UIStroke") dropShadow.Color = Color3.fromRGB(60, 90, 200) dropShadow.Thickness = 2 dropShadow.Transparency = 1 dropShadow.Parent = mainFrame
+
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 54)
+topBar.BackgroundTransparency = 1
+topBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -70, 1, 0)
+titleLabel.Position = UDim2.new(0, 24, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Lunix Hub • Ultimate Edition v2.0"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.TextTransparency = 1
+titleLabel.Parent = topBar
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 36, 0, 36)
+closeBtn.Position = UDim2.new(1, -46, 0, 9)
+closeBtn.BackgroundColor3 = Color3.fromRGB(22, 26, 35)
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = Color3.fromRGB(200, 210, 230)
+closeBtn.TextSize = 14
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BackgroundTransparency = 1
+closeBtn.TextTransparency = 1
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner") closeCorner.CornerRadius = UDim.new(0, 10) closeCorner.Parent = closeBtn
+
+local menuVisible = false
+local function toggleMenuAnimation()
+    if not menuVisible then
+        menuVisible = true
+        mainFrame.Visible = true
+        mainFrame.Size = UDim2.new(0, 600, 0, 400)
+        mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+        
+        TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 700, 0, 480),
+            Position = UDim2.new(0.5, -350, 0.5, -240),
+            BackgroundTransparency = 0
+        }):Play()
+        TweenService:Create(dropShadow, TweenInfo.new(0.3), {Transparency = 0}):Play()
+        TweenService:Create(titleLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+        TweenService:Create(closeBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+    else
+        menuVisible = false
+        local tw1 = TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 600, 0, 400),
+            Position = UDim2.new(0.5, -300, 0.5, -200),
+            BackgroundTransparency = 1
+        })
+        tw1:Play()
+        TweenService:Create(dropShadow, TweenInfo.new(0.25), {Transparency = 1}):Play()
+        TweenService:Create(titleLabel, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+        TweenService:Create(closeBtn, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+        
+        tw1.Completed:Connect(function()
+            if not menuVisible then mainFrame.Visible = false end
+        end)
+    end
+end
+
+closeBtn.MouseButton1Click:Connect(toggleMenuAnimation)
+
+submitKeyBtn.MouseButton1Click:Connect(function()
+    if keyTextBox.Text == CORRECT_KEY then
+        TweenService:Create(keySystemFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(ksStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+        TweenService:Create(ksTitle, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(ksInfo, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(keyTextBox, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+        TweenService:Create(submitKeyBtn, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+        TweenService:Create(errorLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        
+        task.delay(0.3, function()
+            keySystemFrame:Destroy()
+            toggleMenuAnimation()
+        end)
+    else
+        errorLabel.Text = "Неверный ключ доступа!"
+        local p = keySystemFrame.Position
+        for i = 1, 3 do
+            keySystemFrame.Position = p + UDim2.new(0, 8, 0, 0)
+            task.wait(0.03)
+            keySystemFrame.Position = p - UDim2.new(0, 8, 0, 0)
+            task.wait(0.03)
+        end
+        keySystemFrame.Position = p
+    end
+end)
+
+local dragging, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Боковая панель
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0, 185, 1, -60)
+sidebar.Position = UDim2.new(0, 0, 0, 56)
+sidebar.BackgroundColor3 = Color3.fromRGB(9, 11, 15)
+sidebar.BorderSizePixel = 0
+sidebar.Parent = mainFrame
+
+local function createSidebarBtn(name, text, yPos)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(1, -16, 0, 40)
+    btn.Position = UDim2.new(0, 8, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(9, 11, 15)
+    btn.TextColor3 = Color3.fromRGB(140, 150, 175)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = sidebar
+    
+    local padding = Instance.new("UIPadding") padding.PaddingLeft = UDim.new(0, 16) padding.Parent = btn
+    local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0, 10) corner.Parent = btn
+    return btn
+end
+
+local tabMainBtn = createSidebarBtn("TabMain", "⚡ Главная", 10)
+local tabAimbotBtn = createSidebarBtn("TabAimbot", "🎯 Аимбот", 55)
+local tabCombatBtn = createSidebarBtn("TabCombat", "⚔️ Боевые", 100)
+local tabShadersBtn = createSidebarBtn("TabShaders", "🎨 Шейдеры & Небо", 145)
+local tabMatsBtn = createSidebarBtn("TabMats", "🧱 Материалы", 190)
+local tabTpBtn = createSidebarBtn("TabTP", "🚀 Телепорты", 235)
+local tabEspBtn = createSidebarBtn("TabESP", "👁️ ВХ и Бинды", 280)
+local tabPremBtn = createSidebarBtn("TabPrem", "⭐ Premium", 325)
+
+local contentArea = Instance.new("Frame")
+contentArea.Size = UDim2.new(1, -200, 1, -68)
+contentArea.Position = UDim2.new(0, 192, 0, 56)
+contentArea.BackgroundTransparency = 1
+contentArea.Parent = mainFrame
+
+local function createTabContent()
+    local f = Instance.new("ScrollingFrame")
+    f.Size = UDim2.new(1, 0, 1, 0)
+    f.BackgroundTransparency = 1
+    f.BorderSizePixel = 0
+    f.CanvasSize = UDim2.new(0, 0, 0, 0)
+    f.ScrollBarThickness = 4
+    f.Visible = false
+    f.Parent = contentArea
+    return f
+end
+
+local contentMain = createTabContent() contentMain.Visible = true
+local contentAimbot = createTabContent()
+local contentCombat = createTabContent()
+local contentShaders = createTabContent()
+local contentMats = createTabContent()
+local contentTp = createTabContent()
+local contentEsp = createTabContent()
+local contentPrem = createTabContent()
+
+local function switchTab(activeContent, activeBtn)
+    for _, content in ipairs({contentMain, contentAimbot, contentCombat, contentShaders, contentMats, contentTp, contentEsp, contentPrem}) do
+        if content == activeContent then
+            content.Visible = true
+            content.Position = UDim2.new(0, 20, 0, 0)
+            content.CanvasPosition = Vector2.new(0, 0)
+            TweenService:Create(content, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+        else
+            content.Visible = false
+        end
+    end
+    
+    for _, btn in ipairs(sidebar:GetChildren()) do
+        if btn:IsA("TextButton") then
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(9, 11, 15), TextColor3 = Color3.fromRGB(140, 150, 175)}):Play()
+        end
+    end
+    
+    TweenService:Create(activeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(24, 30, 45), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+end
+
+tabMainBtn.BackgroundColor3 = Color3.fromRGB(24, 30, 45)
+tabMainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+tabMainBtn.MouseButton1Click:Connect(function() switchTab(contentMain, tabMainBtn) end)
+tabAimbotBtn.MouseButton1Click:Connect(function() switchTab(contentAimbot, tabAimbotBtn) end)
+tabCombatBtn.MouseButton1Click:Connect(function() switchTab(contentCombat, tabCombatBtn) end)
+tabShadersBtn.MouseButton1Click:Connect(function() switchTab(contentShaders, tabShadersBtn) end)
+tabMatsBtn.MouseButton1Click:Connect(function() switchTab(contentMats, tabMatsBtn) end)
+tabTpBtn.MouseButton1Click:Connect(function() switchTab(contentTp, tabTpBtn) end)
+tabEspBtn.MouseButton1Click:Connect(function() switchTab(contentEsp, tabEspBtn) end)
+tabPremBtn.MouseButton1Click:Connect(function() switchTab(contentPrem, tabPremBtn) end)
+
+local function createStyledButton(parent, text, xPos, yPos, width, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, width, 0, 38)
+    btn.Position = UDim2.new(0, xPos, 0, yPos)
+    btn.BackgroundColor3 = color or Color3.fromRGB(20, 24, 32)
+    btn.TextColor3 = Color3.fromRGB(230, 235, 245)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0, 10) corner.Parent = btn
+    local stroke = Instance.new("UIStroke") stroke.Color = Color3.fromRGB(45, 55, 75) stroke.Thickness = 1 stroke.Parent = btn
+    return btn
+end
+
+-- === ВКЛАДКА 1: ГЛАВНАЯ (с WalkSpeed слайдером) ===
+local rvankaBtn = createStyledButton(contentMain, "Рванка [Биз: Нет]", 0, 0, 210, Color3.fromRGB(50, 30, 40))
+local noclipBtn = createStyledButton(contentMain, "Noclip (Сквозь стены): Выкл", 0, 48, 210, Color3.fromRGB(30, 48, 48))
+local infJumpBtn = createStyledButton(contentMain, "Infinity Jump (Прыжки): Выкл", 0, 96, 210, Color3.fromRGB(30, 48, 48))
+local alwaysAnimBtn = createStyledButton(contentMain, "Эмоции при беге: Выкл", 0, 144, 210, Color3.fromRGB(30, 48, 48))
+
+-- Слайдер FOV Камеры
+local fovLabel = Instance.new("TextLabel")
+fovLabel.Size = UDim2.new(0, 210, 0, 20)
+fovLabel.Position = UDim2.new(0, 0, 0, 192)
+fovLabel.BackgroundTransparency = 1
+fovLabel.Text = "FOV Камеры: 70"
+fovLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
+fovLabel.TextSize = 12
+fovLabel.Font = Enum.Font.GothamBold
+fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovLabel.Parent = contentMain
+
+local fovSliderBg = Instance.new("TextButton")
+fovSliderBg.Size = UDim2.new(0, 210, 0, 32)
+fovSliderBg.Position = UDim2.new(0, 0, 0, 216)
+fovSliderBg.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+fovSliderBg.Text = ""
+fovSliderBg.Parent = contentMain
+local fovCorner = Instance.new("UICorner") fovCorner.CornerRadius = UDim.new(0, 8) fovCorner.Parent = fovSliderBg
+local fovStroke = Instance.new("UIStroke") fovStroke.Color = Color3.fromRGB(45, 55, 75) fovStroke.Thickness = 1 fovStroke.Parent = fovSliderBg
+
+local fovFill = Instance.new("Frame")
+fovFill.Size = UDim2.new((70 - 30) / (120 - 30), 0, 1, 0)
+fovFill.BackgroundColor3 = Color3.fromRGB(50, 120, 200)
+fovFill.BorderSizePixel = 0
+fovFill.Parent = fovSliderBg
+local fovFillCorner = Instance.new("UICorner") fovFillCorner.CornerRadius = UDim.new(0, 8) fovFillCorner.Parent = fovFill
+
+local draggingFov = false
+fovSliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingFov = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingFov = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if draggingFov and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - fovSliderBg.AbsolutePosition.X) / fovSliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(30 + pos * (120 - 30))
+        fovFill.Size = UDim2.new(pos, 0, 1, 0)
+        fovLabel.Text = "FOV Камеры: " .. val
+        Camera.FieldOfView = val
+    end
+end)
+
+-- Слайдер WalkSpeed (Скорость бега)
+local wsLabel = Instance.new("TextLabel")
+wsLabel.Size = UDim2.new(0, 210, 0, 20)
+wsLabel.Position = UDim2.new(0, 0, 0, 256)
+wsLabel.BackgroundTransparency = 1
+wsLabel.Text = "WalkSpeed: 16"
+wsLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
+wsLabel.TextSize = 12
+wsLabel.Font = Enum.Font.GothamBold
+wsLabel.TextXAlignment = Enum.TextXAlignment.Left
+wsLabel.Parent = contentMain
+
+local wsSliderBg = Instance.new("TextButton")
+wsSliderBg.Size = UDim2.new(0, 210, 0, 32)
+wsSliderBg.Position = UDim2.new(0, 0, 0, 280)
+wsSliderBg.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+wsSliderBg.Text = ""
+wsSliderBg.Parent = contentMain
+local wsCorner = Instance.new("UICorner") wsCorner.CornerRadius = UDim.new(0, 8) wsCorner.Parent = wsSliderBg
+local wsStroke = Instance.new("UIStroke") wsStroke.Color = Color3.fromRGB(45, 55, 75) wsStroke.Thickness = 1 wsStroke.Parent = wsSliderBg
+
+local wsFill = Instance.new("Frame")
+wsFill.Size = UDim2.new((16 - 16) / (200 - 16), 0, 1, 0)
+wsFill.BackgroundColor3 = Color3.fromRGB(60, 180, 100)
+wsFill.BorderSizePixel = 0
+wsFill.Parent = wsSliderBg
+local wsFillCorner = Instance.new("UICorner") wsFillCorner.CornerRadius = UDim.new(0, 8) wsFillCorner.Parent = wsFill
+
+local draggingWs = false
+wsSliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingWs = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingWs = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if draggingWs and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - wsSliderBg.AbsolutePosition.X) / wsSliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(16 + pos * (200 - 16))
+        wsFill.Size = UDim2.new(pos, 0, 1, 0)
+        wsLabel.Text = "WalkSpeed: " .. val
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = val end
+    end
+end)
+
+local targetLabel = Instance.new("TextLabel")
+targetLabel.Size = UDim2.new(0, 210, 0, 20)
+targetLabel.Position = UDim2.new(0, 225, 0, 0)
+targetLabel.BackgroundTransparency = 1
+targetLabel.Text = "Цель для рванки:"
+targetLabel.TextColor3 = Color3.fromRGB(160, 170, 185)
+targetLabel.TextSize = 11
+targetLabel.Font = Enum.Font.GothamBold
+targetLabel.Parent = contentMain
+
+local targetScroll = Instance.new("ScrollingFrame")
+targetScroll.Size = UDim2.new(0, 210, 0, 312)
+targetScroll.Position = UDim2.new(0, 225, 0, 22)
+targetScroll.BackgroundColor3 = Color3.fromRGB(15, 18, 24)
+targetScroll.BorderSizePixel = 0
+targetScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+targetScroll.ScrollBarThickness = 4
+targetScroll.Parent = contentMain
+
+local targetScrollCorner = Instance.new("UICorner") targetScrollCorner.CornerRadius = UDim.new(0, 10) targetScrollCorner.Parent = targetScroll
+local targetListLayout = Instance.new("UIListLayout") targetListLayout.SortOrder = Enum.SortOrder.LayoutOrder targetListLayout.Padding = UDim.new(0, 4) targetListLayout.Parent = targetScroll
+
+local function updatePlayerList()
+    for _, child in ipairs(targetScroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    local autoBtn = Instance.new("TextButton")
+    autoBtn.Size = UDim2.new(1, -6, 0, 32)
+    autoBtn.BackgroundColor3 = (selectedTargetPlayer == nil) and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(24, 28, 36)
+    autoBtn.TextColor3 = Color3.fromRGB(230, 235, 245)
+    autoBtn.TextSize = 11
+    autoBtn.Font = Enum.Font.GothamBold
+    autoBtn.Text = "[ Авто (Мардер) ]"
+    autoBtn.Parent = targetScroll
+    
+    local c1 = Instance.new("UICorner") c1.CornerRadius = UDim.new(0, 8) c1.Parent = autoBtn
+    autoBtn.MouseButton1Click:Connect(function() selectedTargetPlayer = nil; updatePlayerList() end)
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player then
+            local pBtn = Instance.new("TextButton")
+            pBtn.Size = UDim2.new(1, -6, 0, 32)
+            pBtn.BackgroundColor3 = (selectedTargetPlayer == p) and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(24, 28, 36)
+            pBtn.TextColor3 = Color3.fromRGB(230, 235, 245)
+            pBtn.TextSize = 11
+            pBtn.Font = Enum.Font.GothamSemibold
+            pBtn.Text = p.Name
+            pBtn.Parent = targetScroll
+            
+            local c2 = Instance.new("UICorner") c2.CornerRadius = UDim.new(0, 8) c2.Parent = pBtn
+            pBtn.MouseButton1Click:Connect(function() selectedTargetPlayer = p; updatePlayerList() end)
+        end
+    end
+    targetScroll.CanvasSize = UDim2.new(0, 0, 0, (#targetScroll:GetChildren() - 1) * 36)
+end
+
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+task.spawn(updatePlayerList)
+contentMain.CanvasSize = UDim2.new(0, 0, 0, 340)
+
+-- === ВКЛАДКА 2: АИМБОТ ===
+local toggleAimbotBtn = createStyledButton(contentAimbot, "Аимбот: Выкл", 0, 0, 210)
+local toggleShowFovBtn = createStyledButton(contentAimbot, "Показывать FOV: Вкл", 225, 0, 210, Color3.fromRGB(30, 48, 48))
+
+local aimPartLabel = Instance.new("TextLabel")
+aimPartLabel.Size = UDim2.new(0, 435, 0, 20)
+aimPartLabel.Position = UDim2.new(0, 0, 0, 48)
+aimPartLabel.BackgroundTransparency = 1
+aimPartLabel.Text = "Выберите часть тела для прицеливания:"
+aimPartLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
+aimPartLabel.TextSize = 12
+aimPartLabel.Font = Enum.Font.GothamBold
+aimPartLabel.TextXAlignment = Enum.TextXAlignment.Left
+aimPartLabel.Parent = contentAimbot
+
+local partHeadBtn = createStyledButton(contentAimbot, "👑 Голова", 0, 74, 102, Color3.fromRGB(35, 55, 80))
+local partTorsoBtn = createStyledButton(contentAimbot, "👕 Торс", 110, 74, 102)
+local partLArmBtn = createStyledButton(contentAimbot, "💪 Рука (Л)", 220, 74, 102)
+local partRArmBtn = createStyledButton(contentAimbot, "💪 Рука (П)", 330, 74, 102)
+
+local partLLegBtn = createStyledButton(contentAimbot, "🦵 Нога (Л)", 0, 120, 210)
+local partRLegBtn = createStyledButton(contentAimbot, "🦵 Нога (П)", 222, 120, 210)
+
+-- Слайдер радиуса FOV Аимбота
+local aimFovLabel = Instance.new("TextLabel")
+aimFovLabel.Size = UDim2.new(0, 435, 0, 20)
+aimFovLabel.Position = UDim2.new(0, 0, 0, 172)
+aimFovLabel.BackgroundTransparency = 1
+aimFovLabel.Text = "Радиус FOV Аимбота: 100"
+aimFovLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
+aimFovLabel.TextSize = 12
+aimFovLabel.Font = Enum.Font.GothamBold
+aimFovLabel.TextXAlignment = Enum.TextXAlignment.Left
+aimFovLabel.Parent = contentAimbot
+
+local aimFovSliderBg = Instance.new("TextButton")
+aimFovSliderBg.Size = UDim2.new(0, 435, 0, 32)
+aimFovSliderBg.Position = UDim2.new(0, 0, 0, 196)
+aimFovSliderBg.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+aimFovSliderBg.Text = ""
+aimFovSliderBg.Parent = contentAimbot
+local afc = Instance.new("UICorner") afc.CornerRadius = UDim.new(0, 8) afc.Parent = aimFovSliderBg
+local afs = Instance.new("UIStroke") afs.Color = Color3.fromRGB(45, 55, 75) afs.Thickness = 1 afs.Parent = aimFovSliderBg
+
+local aimFovFill = Instance.new("Frame")
+aimFovFill.Size = UDim2.new(100 / 400, 0, 1, 0)
+aimFovFill.BackgroundColor3 = Color3.fromRGB(100, 140, 255)
+aimFovFill.BorderSizePixel = 0
+aimFovFill.Parent = aimFovSliderBg
+local affc = Instance.new("UICorner") affc.CornerRadius = UDim.new(0, 8) affc.Parent = aimFovFill
+
+local draggingAimFov = false
+aimFovSliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingAimFov = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingAimFov = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if draggingAimFov and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - aimFovSliderBg.AbsolutePosition.X) / aimFovSliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(20 + pos * (400 - 20))
+        aimFovFill.Size = UDim2.new(pos, 0, 1, 0)
+        aimFovLabel.Text = "Радиус FOV Аимбота: " .. val
+        aimbotSettings.Fov = val
+    end
+end)
+
+contentAimbot.CanvasSize = UDim2.new(0, 0, 0, 250)
+
+local function updateAimPartButtons(selected)
+    aimbotSettings.TargetPart = selected
+    partHeadBtn.BackgroundColor3 = (selected == "Head") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+    partTorsoBtn.BackgroundColor3 = (selected == "Torso") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+    partLArmBtn.BackgroundColor3 = (selected == "LeftArm") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+    partRArmBtn.BackgroundColor3 = (selected == "RightArm") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+    partLLegBtn.BackgroundColor3 = (selected == "LeftLeg") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+    partRLegBtn.BackgroundColor3 = (selected == "RightLeg") and Color3.fromRGB(35, 55, 80) or Color3.fromRGB(20, 24, 32)
+end
+
+partHeadBtn.MouseButton1Click:Connect(function() updateAimPartButtons("Head") end)
+partTorsoBtn.MouseButton1Click:Connect(function() updateAimPartButtons("Torso") end)
+partLArmBtn.MouseButton1Click:Connect(function() updateAimPartButtons("LeftArm") end)
+partRArmBtn.MouseButton1Click:Connect(function() updateAimPartButtons("RightArm") end)
+partLLegBtn.MouseButton1Click:Connect(function() updateAimPartButtons("LeftLeg") end)
+partRLegBtn.MouseButton1Click:Connect(function() updateAimPartButtons("RightLeg") end)
+
+toggleAimbotBtn.MouseButton1Click:Connect(function()
+    aimbotSettings.Enabled = not aimbotSettings.Enabled
+    toggleAimbotBtn.Text = aimbotSettings.Enabled and "Аимбот: Вкл" or "Аимбот: Выкл"
+    toggleAimbotBtn.BackgroundColor3 = aimbotSettings.Enabled and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+toggleAimbotBtn.MouseButton2Click:Connect(function()
+    bindingAction = "Aimbot"
+    toggleAimbotBtn.Text = "Нажми кнопку..."
+end)
+
+toggleShowFovBtn.MouseButton1Click:Connect(function()
+    aimbotSettings.ShowFov = not aimbotSettings.ShowFov
+    toggleShowFovBtn.Text = aimbotSettings.ShowFov and "Показывать FOV: Вкл" or "Показывать FOV: Выкл"
+    toggleShowFovBtn.BackgroundColor3 = aimbotSettings.ShowFov and Color3.fromRGB(30, 48, 48) or Color3.fromRGB(20, 24, 32)
+end)
+
+local function getClosestAimbotTarget()
+    local closestTarget = nil
+    local shortestDist = aimbotSettings.Fov
+    local mousePos = UserInputService:GetMouseLocation()
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local char = p.Character
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local partName = aimbotSettings.TargetPart
+                if partName == "Torso" then partName = "UpperTorso" end
+                local targetPart = char:FindFirstChild(aimbotSettings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
+                
+                if targetPart then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            closestTarget = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
+RunService.RenderStepped:Connect(function()
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    if aimbotSettings.ShowFov and aimbotSettings.Enabled then
+        fovCircle.Visible = true
+        fovCircle.Radius = aimbotSettings.Fov
+        fovCircle.Position = mousePos
+    else
+        fovCircle.Visible = false
+    end
+
+    if aimbotSettings.Enabled then
+        local target = getClosestAimbotTarget()
+        if target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end
+end)
+
+-- === ВКЛАДКА 3: БОЕВЫЕ ===
+local autoGunBtn = createStyledButton(contentCombat, "Авто-Ган: Выкл", 0, 0, 210, Color3.fromRGB(45, 40, 30))
+local auraBtn = createStyledButton(contentCombat, "Knife Aura (300) [Биз: Нет]", 225, 0, 210)
+local massKillBtn = createStyledButton(contentCombat, "Mass Kill (Убить всех ножом) [Биз: Нет]", 0, 48, 435, Color3.fromRGB(55, 25, 32))
+local gunAuraBtn = createStyledButton(contentCombat, "Gun Aura (Авто-выстрел в мардера) [Биз: Нет]", 0, 96, 435, Color3.fromRGB(25, 40, 55))
+contentCombat.CanvasSize = UDim2.new(0, 0, 0, 160)
+
+-- === ВКЛАДКА 4: ШЕЙДЕРЫ И НЕБО ===
+local shaderInfo = Instance.new("TextLabel")
+shaderInfo.Size = UDim2.new(0, 435, 0, 25)
+shaderInfo.Position = UDim2.new(0, 0, 0, 0)
+shaderInfo.BackgroundTransparency = 1
+shaderInfo.Text = "Пресеты графики и кастомизация неба:"
+shaderInfo.TextColor3 = Color3.fromRGB(180, 190, 205)
+shaderInfo.TextSize = 13
+shaderInfo.Font = Enum.Font.GothamBold
+shaderInfo.TextXAlignment = Enum.TextXAlignment.Left
+shaderInfo.Parent = contentShaders
+
+local shCyberpunk = createStyledButton(contentShaders, "Киберпанк (Неон)", 0, 32, 210, Color3.fromRGB(45, 25, 55))
+local shRetro = createStyledButton(contentShaders, "Ретро Вейв (Пурпур)", 225, 32, 210, Color3.fromRGB(55, 25, 45))
+local shHDR = createStyledButton(contentShaders, "Кинематографичный HDR", 0, 78, 210, Color3.fromRGB(25, 45, 55))
+local shAnime = createStyledButton(contentShaders, "Мультяшный / Аниме", 225, 78, 210, Color3.fromRGB(45, 55, 25))
+
+local skySunset = createStyledButton(contentShaders, "⛅ Пресет: Закат", 0, 124, 210, Color3.fromRGB(40, 40, 55))
+local skySpace = createStyledButton(contentShaders, "🌌 Пресет: Космос", 225, 124, 210, Color3.fromRGB(40, 40, 55))
+
+local customSkyLabel = Instance.new("TextLabel")
+customSkyLabel.Size = UDim2.new(0, 435, 0, 20)
+customSkyLabel.Position = UDim2.new(0, 0, 0, 172)
+customSkyLabel.BackgroundTransparency = 1
+customSkyLabel.Text = "Кастомный цвет неба (Палитра RGB):"
+customSkyLabel.TextColor3 = Color3.fromRGB(160, 170, 185)
+customSkyLabel.TextSize = 12
+customSkyLabel.Font = Enum.Font.GothamBold
+customSkyLabel.TextXAlignment = Enum.TextXAlignment.Left
+customSkyLabel.Parent = contentShaders
+
+local function createColorSlider(name, yPos, colorBar)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 60, 0, 32)
+    lbl.Position = UDim2.new(0, 0, 0, yPos)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name
+    lbl.TextColor3 = Color3.fromRGB(200, 205, 215)
+    lbl.TextSize = 12
+    lbl.Font = Enum.Font.GothamBold
+    lbl.Parent = contentShaders
+    
+    local sliderBg = Instance.new("TextButton")
+    sliderBg.Size = UDim2.new(0, 365, 0, 32)
+    sliderBg.Position = UDim2.new(0, 70, 0, yPos)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    sliderBg.Text = ""
+    sliderBg.Parent = contentShaders
+    local sc = Instance.new("UICorner") sc.CornerRadius = UDim.new(0, 8) sc.Parent = sliderBg
+    local ss = Instance.new("UIStroke") ss.Color = Color3.fromRGB(45, 55, 75) ss.Thickness = 1 ss.Parent = sliderBg
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.5, 0, 1, 0)
+    fill.BackgroundColor3 = colorBar
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderBg
+    local fc = Instance.new("UICorner") fc.CornerRadius = UDim.new(0, 8) fc.Parent = fill
+
+    return sliderBg, fill
+end
+
+local skyR, skyRFill = createColorSlider("Red:", 198, Color3.fromRGB(220, 50, 50))
+local skyG, skyGFill = createColorSlider("Green:", 238, Color3.fromRGB(50, 200, 50))
+local skyB, skyBFill = createColorSlider("Blue:", 278, Color3.fromRGB(50, 100, 220))
+
+local currentR, currentG, currentB = 128, 128, 128
+
+local function updateCustomSky()
+    local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+    sky.SkyboxBk = "" sky.SkyboxDn = "" sky.SkyboxFt = "" sky.SkyboxLf = "" sky.SkyboxRt = "" sky.SkyboxUp = ""
+    sky.Parent = Lighting
+    Lighting.OutdoorAmbient = Color3.fromRGB(currentR, currentG, currentB)
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+    atm.Color = Color3.fromRGB(currentR, currentG, currentB)
+    atm.Parent = Lighting
+end
+
+local function setupSlider(slider, isRed, isGreen, isBlue)
+    local draggingSlider = false
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            draggingSlider = true
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            draggingSlider = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+            local val = math.floor(pos * 255)
+            if isRed then currentR = val skyRFill.Size = UDim2.new(pos, 0, 1, 0)
+            elseif isGreen then currentG = val skyGFill.Size = UDim2.new(pos, 0, 1, 0)
+            elseif isBlue then currentB = val skyBFill.Size = UDim2.new(pos, 0, 1, 0) end
+            updateCustomSky()
+        end
+    end)
+end
+
+setupSlider(skyR, true, false, false)
+setupSlider(skyG, false, true, false)
+setupSlider(skyB, false, false, true)
+
+skyRFill.Size = UDim2.new(128/255, 0, 1, 0)
+skyGFill.Size = UDim2.new(128/255, 0, 1, 0)
+skyBFill.Size = UDim2.new(128/255, 0, 1, 0)
+
+local shReset = createStyledButton(contentShaders, "🔄 Сбросить стандартную графику", 0, 322, 435, Color3.fromRGB(55, 30, 30))
+contentShaders.CanvasSize = UDim2.new(0, 0, 0, 375)
+
+local function applyShader(profile)
+    Lighting.GlobalShadows = true
+    Lighting.Brightness = 2
+    for _, eff in ipairs(Lighting:GetChildren()) do
+        if eff:IsA("PostEffect") or eff:IsA("Sky") or eff:IsA("Atmosphere") then
+            eff:Destroy()
+        end
+    end
+    local atmosphere = Instance.new("Atmosphere") atmosphere.Density = 0.35 atmosphere.Parent = Lighting
+
+    if profile == "Cyberpunk" then
+        Lighting.ClockTime = 0.5
+        Lighting.Brightness = 1.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(40, 20, 60)
+        atmosphere.Color = Color3.fromRGB(120, 80, 200)
+        local cc = Instance.new("ColorCorrectionEffect") cc.TintColor = Color3.fromRGB(200, 220, 255) cc.Contrast = 0.3 cc.Saturation = 0.4 cc.Parent = Lighting
+        local bloom = Instance.new("BloomEffect") bloom.Intensity = 0.8 bloom.Size = 24 bloom.Parent = Lighting
+    elseif profile == "Retro" then
+        Lighting.ClockTime = 18
+        Lighting.OutdoorAmbient = Color3.fromRGB(90, 40, 90)
+        local cc = Instance.new("ColorCorrectionEffect") cc.TintColor = Color3.fromRGB(255, 180, 240) cc.Contrast = 0.4 cc.Saturation = 0.6 cc.Parent = Lighting
+        local bloom = Instance.new("BloomEffect") bloom.Intensity = 1.2 bloom.Parent = Lighting
+    elseif profile == "HDR" then
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 2.5
+        local cc = Instance.new("ColorCorrectionEffect") cc.Contrast = 0.25 cc.Saturation = 0.35 cc.Parent = Lighting
+        local sun = Instance.new("SunRaysEffect") sun.Intensity = 0.25 sun.Parent = Lighting
+    elseif profile == "Anime" then
+        Lighting.ClockTime = 12
+        Lighting.Brightness = 3
+        local cc = Instance.new("ColorCorrectionEffect") cc.Saturation = 0.8 cc.Contrast = 0.3 cc.Parent = Lighting
+    end
+end
+
+shCyberpunk.MouseButton1Click:Connect(function() applyShader("Cyberpunk") end)
+shRetro.MouseButton1Click:Connect(function() applyShader("Retro") end)
+shHDR.MouseButton1Click:Connect(function() applyShader("HDR") end)
+shAnime.MouseButton1Click:Connect(function() applyShader("Anime") end)
+
+skySunset.MouseButton1Click:Connect(function()
+    local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+    sky.SkyboxBk = "rbxassetid://600830200" sky.SkyboxDn = "rbxassetid://600831631" sky.SkyboxFt = "rbxassetid://600832720"
+    sky.SkyboxLf = "rbxassetid://600833862" sky.SkyboxRt = "rbxassetid://600835820" sky.SkyboxUp = "rbxassetid://600837134"
+    sky.Parent = Lighting
+    Lighting.ClockTime = 18.5
+end)
+
+skySpace.MouseButton1Click:Connect(function()
+    local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+    sky.SkyboxBk = "rbxassetid://135254921" sky.SkyboxDn = "rbxassetid://135254939" sky.SkyboxFt = "rbxassetid://135254955"
+    sky.SkyboxLf = "rbxassetid://135254966" sky.SkyboxRt = "rbxassetid://135254983" sky.SkyboxUp = "rbxassetid://135254998"
+    sky.Parent = Lighting
+    Lighting.ClockTime = 0
+end)
+
+shReset.MouseButton1Click:Connect(function()
+    Lighting.ClockTime = 14.5
+    Lighting.Brightness = 2
+    Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    for _, eff in ipairs(Lighting:GetChildren()) do
+        if eff:IsA("PostEffect") or eff:IsA("Sky") or eff:IsA("Atmosphere") then
+            eff:Destroy()
+        end
+    end
+end)
+
+-- === ВКЛАДКА 5: МАТЕРИАЛЫ И ТЕКСТУРЫ ===
+local matInfo = Instance.new("TextLabel")
+matInfo.Size = UDim2.new(0, 435, 0, 25)
+matInfo.Position = UDim2.new(0, 0, 0, 0)
+matInfo.BackgroundTransparency = 1
+matInfo.Text = "Кастомизация материалов мира:"
+matInfo.TextColor3 = Color3.fromRGB(180, 190, 205)
+matInfo.TextSize = 13
+matInfo.Font = Enum.Font.GothamBold
+matInfo.TextXAlignment = Enum.TextXAlignment.Left
+matInfo.Parent = contentMats
+
+local originalMaterials = {}
+local function cacheOriginalMaterials()
+    if next(originalMaterials) then return end
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            originalMaterials[part] = {
+                Material = part.Material,
+                Transparency = part.Transparency,
+                Reflectance = part.Reflectance,
+                Color = part.Color
+            }
+        end
+    end
+end
+task.spawn(cacheOriginalMaterials)
+
+workspace.DescendantAdded:Connect(function(part)
+    if part:IsA("BasePart") and not originalMaterials[part] then
+        originalMaterials[part] = {
+            Material = part.Material,
+            Transparency = part.Transparency,
+            Reflectance = part.Reflectance,
+            Color = part.Color
+        }
+    end
+end)
+
+local matGlass = createStyledButton(contentMats, "🪟 Матовое Стекло", 0, 32, 210, Color3.fromRGB(30, 50, 60))
+local matNeon = createStyledButton(contentMats, "💡 Неоновый Свет", 225, 32, 210, Color3.fromRGB(55, 40, 25))
+local matMarble = createStyledButton(contentMats, "💎 Глянцевый Мрамор", 0, 78, 210, Color3.fromRGB(40, 50, 55))
+local matWood = createStyledButton(contentMats, "🌲 Элитное Дерево", 225, 78, 210, Color3.fromRGB(50, 40, 35))
+local matIce = createStyledButton(contentMats, "🧊 Ледяной Мир", 0, 124, 210, Color3.fromRGB(25, 45, 60))
+local matGranite = createStyledButton(contentMats, "🗿 Прочный Гранит", 225, 124, 210, Color3.fromRGB(40, 40, 40))
+local matForcefield = createStyledButton(contentMats, "🛡️ Силовое Поле", 0, 170, 210, Color3.fromRGB(25, 35, 60))
+local matBrick = createStyledButton(contentMats, "🧱 Старинный Кирпич", 225, 170, 210, Color3.fromRGB(55, 35, 30))
+
+local matReset = createStyledButton(contentMats, "🔄 Сбросить все материалы", 0, 218, 435, Color3.fromRGB(55, 30, 30))
+contentMats.CanvasSize = UDim2.new(0, 0, 0, 275)
+
+matGlass.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Glass
+            part.Transparency = 0.35
+        end
+    end
+end)
+
+matNeon.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Neon
+        end
+    end
+end)
+
+matMarble.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.SmoothPlastic
+            part.Reflectance = 0.35
+        end
+    end
+end)
+
+matWood.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Wood
+        end
+    end
+end)
+
+matIce.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Ice
+        end
+    end
+end)
+
+matGranite.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Granite
+        end
+    end
+end)
+
+matForcefield.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.ForceField
+        end
+    end
+end)
+
+matBrick.MouseButton1Click:Connect(function()
+    cacheOriginalMaterials()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Material = Enum.Material.Brick
+        end
+    end
+end)
+
+matReset.MouseButton1Click:Connect(function()
+    for part, data in pairs(originalMaterials) do
+        if part and part.Parent then
+            part.Material = data.Material
+            part.Transparency = data.Transparency
+            part.Reflectance = data.Reflectance
+            part.Color = data.Color
+        end
+    end
+end)
+
+-- === ВКЛАДКА 6: ТЕЛЕПОРТЫ ===
+local tpGunBtn = createStyledButton(contentTp, "ТП к пистолету [Биз: Нет]", 0, 0, 210)
+local tpMurderBtn = createStyledButton(contentTp, "ТП к мардеру [Биз: Нет]", 225, 0, 210, Color3.fromRGB(55, 25, 25))
+local tpSheriffBtn = createStyledButton(contentTp, "ТП к шерифу [Биз: Нет]", 0, 48, 210, Color3.fromRGB(25, 30, 55))
+local tpRandomBtn = createStyledButton(contentTp, "ТП по кругу [Биз: Нет]", 225, 48, 210)
+contentTp.CanvasSize = UDim2.new(0, 0, 0, 105)
+
+-- === ВКЛАДКА 7: ВХ И БИНДЫ ===
+local toggleEspBtn = createStyledButton(contentEsp, "ВХ (Общий): Выкл", 0, 0, 210)
+local hlBtn = createStyledButton(contentEsp, "Подсветка: Выкл", 225, 0, 210)
+local boxBtn = createStyledButton(contentEsp, "Боксы: Выкл", 0, 48, 210)
+local nameBtn = createStyledButton(contentEsp, "Имена: Выкл", 225, 48, 210)
+local distBtn = createStyledButton(contentEsp, "Дистанция: Выкл", 0, 96, 210)
+local tracerBtn = createStyledButton(contentEsp, "Линии: Выкл", 225, 96, 210)
+local clearBindsBtn = createStyledButton(contentEsp, "Сбросить все бинды", 0, 144, 435, Color3.fromRGB(55, 30, 30))
+contentEsp.CanvasSize = UDim2.new(0, 0, 0, 200)
+
+toggleEspBtn.MouseButton1Click:Connect(function()
+    espSettings.Enabled = not espSettings.Enabled
+    toggleEspBtn.Text = espSettings.Enabled and "ВХ (Общий): Вкл" or "ВХ (Общий): Выкл"
+    toggleEspBtn.BackgroundColor3 = espSettings.Enabled and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+hlBtn.MouseButton1Click:Connect(function()
+    espSettings.Highlight = not espSettings.Highlight
+    hlBtn.Text = espSettings.Highlight and "Подсветка: Вкл" or "Подсветка: Выкл"
+    hlBtn.BackgroundColor3 = espSettings.Highlight and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+boxBtn.MouseButton1Click:Connect(function()
+    espSettings.Boxes = not espSettings.Boxes
+    boxBtn.Text = espSettings.Boxes and "Боксы: Вкл" or "Боксы: Выкл"
+    boxBtn.BackgroundColor3 = espSettings.Boxes and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+nameBtn.MouseButton1Click:Connect(function()
+    espSettings.Names = not espSettings.Names
+    nameBtn.Text = espSettings.Names and "Имена: Вкл" or "Имена: Выкл"
+    nameBtn.BackgroundColor3 = espSettings.Names and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+distBtn.MouseButton1Click:Connect(function()
+    espSettings.Distance = not espSettings.Distance
+    distBtn.Text = espSettings.Distance and "Дистанция: Вкл" or "Дистанция: Выкл"
+    distBtn.BackgroundColor3 = espSettings.Distance and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+tracerBtn.MouseButton1Click:Connect(function()
+    espSettings.Tracers = not espSettings.Tracers
+    tracerBtn.Text = espSettings.Tracers and "Линии: Вкл" or "Линии: Выкл"
+    tracerBtn.BackgroundColor3 = espSettings.Tracers and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+-- === ВКЛАДКА 8: PREMIUM ===
+local premLockFrame = Instance.new("Frame")
+premLockFrame.Size = UDim2.new(1, 0, 1, 0)
+premLockFrame.BackgroundTransparency = 1
+premLockFrame.Parent = contentPrem
+
+local premWarning = Instance.new("TextLabel")
+premWarning.Size = UDim2.new(1, 0, 0, 60)
+premWarning.Position = UDim2.new(0, 0, 0, 20)
+premWarning.BackgroundTransparency = 1
+premWarning.Text = "Упс похоже у вас нету премиум\nесли есть то введите ключ если нет то купите у bloodyMYs\nи попробуйте еще раз"
+premWarning.TextColor3 = Color3.fromRGB(255, 120, 120)
+premWarning.TextSize = 13
+premWarning.Font = Enum.Font.GothamBold
+premWarning.TextWrapped = true
+premWarning.Parent = premLockFrame
+
+local premKeyBox = Instance.new("TextBox")
+premKeyBox.Size = UDim2.new(0, 300, 0, 44)
+premKeyBox.Position = UDim2.new(0.5, -150, 0, 100)
+premKeyBox.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+premKeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+premKeyBox.PlaceholderText = "Введите Premium ключ..."
+premKeyBox.PlaceholderColor3 = Color3.fromRGB(90, 100, 115)
+premKeyBox.TextSize = 14
+premKeyBox.Font = Enum.Font.Gotham
+premKeyBox.Parent = premLockFrame
+local pkc = Instance.new("UICorner") pkc.CornerRadius = UDim.new(0, 10) pkc.Parent = premKeyBox
+local pks = Instance.new("UIStroke") pks.Color = Color3.fromRGB(45, 55, 75) pks.Thickness = 1 pks.Parent = premKeyBox
+
+local premSubmitBtn = Instance.new("TextButton")
+premSubmitBtn.Size = UDim2.new(0, 300, 0, 42)
+premSubmitBtn.Position = UDim2.new(0.5, -150, 0, 155)
+premSubmitBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 255)
+premSubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+premSubmitBtn.TextSize = 14
+premSubmitBtn.Font = Enum.Font.GothamBold
+premSubmitBtn.Text = "Активировать Premium"
+premSubmitBtn.Parent = premLockFrame
+local psc = Instance.new("UICorner") psc.CornerRadius = UDim.new(0, 10) psc.Parent = premSubmitBtn
+
+local premContentContainer = Instance.new("Frame")
+premContentContainer.Size = UDim2.new(1, 0, 1, 0)
+premContentContainer.BackgroundTransparency = 1
+premContentContainer.Visible = false
+premContentContainer.Parent = contentPrem
+
+local premTitle = Instance.new("TextLabel")
+premTitle.Size = UDim2.new(1, 0, 0, 30)
+premTitle.BackgroundTransparency = 1
+premTitle.Text = "⭐ Premium Защита от телепортов и рванки"
+premTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+premTitle.TextSize = 13
+premTitle.Font = Enum.Font.GothamBold
+premTitle.TextXAlignment = Enum.TextXAlignment.Left
+premTitle.Parent = premContentContainer
+
+local antiRvankaBtn = createStyledButton(premContentContainer, "Анти-Рванка: Выкл", 0, 35, 435, Color3.fromRGB(30, 48, 48))
+local antiTPMurderBtn = createStyledButton(premContentContainer, "Анти-ТП (Если ты Мардер): Выкл", 0, 83, 435, Color3.fromRGB(30, 48, 48))
+local antiTPSheriffBtn = createStyledButton(premContentContainer, "Анти-ТП (Если ты Шериф): Выкл", 0, 131, 435, Color3.fromRGB(30, 48, 48))
+local antiTPAllBtn = createStyledButton(premContentContainer, "Анти-ТП (Никто не может ТПаться к тебе): Выкл", 0, 179, 435, Color3.fromRGB(48, 30, 48))
+contentPrem.CanvasSize = UDim2.new(0, 0, 0, 240)
+
+antiRvankaBtn.MouseButton1Click:Connect(function()
+    antiSettings.AntiRvanka = not antiSettings.AntiRvanka
+    antiRvankaBtn.Text = antiSettings.AntiRvanka and "Анти-Рванка: Вкл" or "Анти-Рванка: Выкл"
+    antiRvankaBtn.BackgroundColor3 = antiSettings.AntiRvanka and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+antiTPMurderBtn.MouseButton1Click:Connect(function()
+    antiSettings.AntiTPMurder = not antiSettings.AntiTPMurder
+    antiTPMurderBtn.Text = antiSettings.AntiTPMurder and "Анти-ТП (Мардер): Вкл" or "Анти-ТП (Если ты Мардер): Выкл"
+    antiTPMurderBtn.BackgroundColor3 = antiSettings.AntiTPMurder and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+antiTPSheriffBtn.MouseButton1Click:Connect(function()
+    antiSettings.AntiTPSheriff = not antiSettings.AntiTPSheriff
+    antiTPSheriffBtn.Text = antiSettings.AntiTPSheriff and "Анти-ТП (Шериф): Вкл" or "Анти-ТП (Если ты Шериф): Выкл"
+    antiTPSheriffBtn.BackgroundColor3 = antiSettings.AntiTPSheriff and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+antiTPAllBtn.MouseButton1Click:Connect(function()
+    antiSettings.AntiTPAll = not antiSettings.AntiTPAll
+    antiTPAllBtn.Text = antiSettings.AntiTPAll and "Анти-ТП (Все): Вкл" or "Анти-ТП (Никто не может ТПаться к тебе): Выкл"
+    antiTPAllBtn.BackgroundColor3 = antiSettings.AntiTPAll and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+end)
+
+premSubmitBtn.MouseButton1Click:Connect(function()
+    if PREMIUM_KEYS[premKeyBox.Text] then
+        isPremiumUnlocked = true
+        premLockFrame.Visible = false
+        premContentContainer.Visible = true
+    else
+        premWarning.Text = "Упс похоже у вас нету премиум\nесли есть то введите ключ если нет то купите у bloodyMYs\nи попробуйте еще раз (Неверный ключ!)"
+        local p = premKeyBox.Position
+        for i = 1, 3 do
+            premKeyBox.Position = p + UDim2.new(0, 6, 0, 0)
+            task.wait(0.03)
+            premKeyBox.Position = p - UDim2.new(0, 6, 0, 0)
+            task.wait(0.03)
+        end
+        premKeyBox.Position = p
+    end
+end)
+
+local function isLocalMurderer()
+    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+    return (char and char:FindFirstChild("Knife")) or (backpack and backpack:FindFirstChild("Knife"))
+end
+
+local function isLocalSheriff()
+    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+    return (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun"))
+end
+
+RunService.Heartbeat:Connect(function()
+    local myChar = player.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local pRoot = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - pRoot.Position).Magnitude
+
+            if dist < 15 then
+                local blockTeleport = false
+                if antiSettings.AntiTPAll then
+                    blockTeleport = true
+                elseif antiSettings.AntiTPMurder and isLocalMurderer() then
+                    blockTeleport = true
+                elseif antiSettings.AntiTPSheriff and isLocalSheriff() then
+                    blockTeleport = true
+                end
+
+                if blockTeleport then
+                    pRoot.CFrame = pRoot.CFrame * CFrame.new(0, 0, 25)
+                end
+
+                if antiSettings.AntiRvanka and pRoot.Velocity.Magnitude > 1000 then
+                    pRoot.Velocity = Vector3.new(0, 0, 0)
+                    p.Character:BreakJoints()
+                end
+            end
+        end
+    end
+end)
+
+local function findGunDrop()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("BasePart") then return obj end
+    end
+    return nil
+end
+
+local function findPlayerByRole(roleType)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local char = p.Character
+            local backpack = p:FindFirstChild("Backpack")
+            local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+            local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+            if roleType == "Murderer" and hasKnife then return char
+            elseif roleType == "Sheriff" and hasGun then return char end
+        end
+    end
+    return nil
+end
+
+local noclipActive = false
+local function toggleNoclip()
+    noclipActive = not noclipActive
+    if noclipActive then
+        noclipBtn.Text = "Noclip: АКТИВЕН"
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+    else
+        noclipBtn.Text = "Noclip (Сквозь стены): Выкл"
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if noclipActive then
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+    end
+end)
+
+local infJumpActive = false
+local function toggleInfJump()
+    infJumpActive = not infJumpActive
+    if infJumpActive then
+        infJumpBtn.Text = "Infinity Jump: АКТИВЕН"
+        infJumpBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+    else
+        infJumpBtn.Text = "Infinity Jump (Прыжки): Выкл"
+        infJumpBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpActive then
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+local autoGunActive = false
+local function toggleAutoGun()
+    autoGunActive = not autoGunActive
+    if autoGunActive then
+        autoGunBtn.Text = "Авто-Ган: АКТИВЕН"
+        autoGunBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+        task.spawn(function()
+            while autoGunActive do
+                local gunDrop = findGunDrop()
+                if gunDrop then
+                    local char = player.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local originalCFrame = root.CFrame
+                        while autoGunActive and findGunDrop() do
+                            local drop = findGunDrop()
+                            if drop and root then root.CFrame = drop.CFrame + Vector3.new(0, 1, 0) end
+                            task.wait(0.05)
+                        end
+                        if root then root.CFrame = originalCFrame end
+                    end
+                end
+                task.wait(0.2)
+            end
+            autoGunBtn.Text = "Авто-Ган: Выкл"
+            autoGunBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+        end)
+    else
+        autoGunBtn.Text = "Авто-Ган: Выкл"
+        autoGunBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+local function tpToGun()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local gunDrop = findGunDrop()
+    if gunDrop then task.defer(function() char.HumanoidRootPart.CFrame = gunDrop.CFrame + Vector3.new(0, 3, 0) end) end
+end
+
+local function tpToMurder()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local targetChar = findPlayerByRole("Murderer")
+    if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+        task.defer(function() char.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0) end)
+    end
+end
+
+local function tpToSheriff()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local targetChar = findPlayerByRole("Sheriff")
+    if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+        task.defer(function() char.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0) end)
+    else
+        local gunDrop = findGunDrop()
+        if gunDrop then task.defer(function() char.HumanoidRootPart.CFrame = gunDrop.CFrame + Vector3.new(0, 3, 0) end) end
+    end
+end
+
+local shuffledQueue = {}
+local function tpToRandom()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if #shuffledQueue == 0 then
+        local pool = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(pool, p.Character)
+            end
+        end
+        math.randomseed(tick())
+        for i = #pool, 2, -1 do
+            local j = math.random(1, i)
+            pool[i], pool[j] = pool[j], pool[i]
+        end
+        shuffledQueue = pool
+    end
+    local nextTarget = table.remove(shuffledQueue, 1)
+    if nextTarget and nextTarget:FindFirstChild("HumanoidRootPart") then
+        task.defer(function() char.HumanoidRootPart.CFrame = nextTarget.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0) end)
+    else shuffledQueue = {} end
+end
+
+local alwaysAnimActive = false
+local function toggleAlwaysAnim()
+    alwaysAnimActive = not alwaysAnimActive
+    if alwaysAnimActive then
+        alwaysAnimBtn.Text = "Эмоции при беге: АКТИВНЫ"
+        alwaysAnimBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+        task.spawn(function()
+            while alwaysAnimActive do
+                local char = player.Character
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    local animator = humanoid:FindFirstChildOfClass("Animator")
+                    if animator then
+                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                            if not track.Name:lower():find("walk") and not track.Name:lower():find("run") and not track.Name:lower():find("jump") then
+                                track.Priority = Enum.AnimationPriority.Action4
+                                if track.IsPlaying and track.TimePosition >= track.Length - 0.1 then
+                                    track.TimePosition = 0
+                                end
+                            end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+            alwaysAnimBtn.Text = "Эмоции при беге: Выкл"
+            alwaysAnimBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+        end)
+    else
+        alwaysAnimBtn.Text = "Эмоции при беге: Выкл"
+        alwaysAnimBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+local rvankaActive = false
+local function toggleRvanka()
+    rvankaActive = not rvankaActive
+    if rvankaActive then
+        rvankaBtn.Text = "Рванка: АКТИВНА"
+        rvankaBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+        task.spawn(function()
+            while rvankaActive do
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if not root or not humanoid or humanoid.Health <= 0 then break end
+                humanoid.PlatformStand = true
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+                local targetChar = nil
+                if selectedTargetPlayer and selectedTargetPlayer.Character then
+                    targetChar = selectedTargetPlayer.Character
+                else
+                    targetChar = findPlayerByRole("Murderer")
+                    if not targetChar then
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                                targetChar = p.Character
+                                break
+                            end
+                        end
+                    end
+                end
+                if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                    local tRoot = targetChar.HumanoidRootPart
+                    for _, part in ipairs(targetChar:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
+                    root.CFrame = tRoot.CFrame * CFrame.new(math.random(-4, 4), math.random(-2, 5), math.random(-4, 4))
+                    root.Velocity = Vector3.new(math.random(-5000, 5000), math.random(-4000, 5000), math.random(-5000, 5000))
+                end
+                RunService.RenderStepped:Wait()
+            end
+            local char = player.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            if humanoid then humanoid.PlatformStand = false end
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = true end
+                end
+            end
+            rvankaActive = false
+            rvankaBtn.Text = "Рванка [Биз: Нет]"
+            rvankaBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+        end)
+    else
+        rvankaBtn.Text = "Рванка [Биз: Нет]"
+        rvankaBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+local auraActive = false
+local function toggleAura()
+    auraActive = not auraActive
+    if auraActive then
+        auraBtn.Text = "Knife Aura: АКТИВНА"
+        auraBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+    else
+        auraBtn.Text = "Knife Aura (300) [Биз: Нет]"
+        auraBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+task.spawn(function()
+    while true do
+        if auraActive then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local knife = char and (char:FindFirstChild("Knife") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife")))
+            if root and knife then
+                if knife.Parent ~= char then knife.Parent = char end
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                        local pHum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if pRoot and pHum and pHum.Health > 0 then
+                            if (root.Position - pRoot.Position).Magnitude <= 300 then
+                                knife.Parent = char
+                                if knife:FindFirstChild("Handle") then
+                                    firetouchinterest(knife.Handle, pRoot, 0)
+                                    firetouchinterest(knife.Handle, pRoot, 1)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end)
+
+local massKillActive = false
+local function toggleMassKill()
+    massKillActive = not massKillActive
+    if massKillActive then
+        massKillBtn.Text = "Mass Kill: АКТИВЕН"
+        massKillBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+        task.spawn(function()
+            while massKillActive do
+                local char = player.Character
+                local knife = char and (char:FindFirstChild("Knife") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife")))
+                if knife then
+                    if knife.Parent ~= char then knife.Parent = char end
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character then
+                            local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                            local pHum = p.Character:FindFirstChildOfClass("Humanoid")
+                            if pRoot and pHum and pHum.Health > 0 then
+                                if knife:FindFirstChild("Handle") then
+                                    firetouchinterest(knife.Handle, pRoot, 0)
+                                    firetouchinterest(knife.Handle, pRoot, 1)
+                                end
+                            end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+            massKillBtn.Text = "Mass Kill (Убить всех ножом) [Биз: Нет]"
+            massKillBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+        end)
+    else
+        massKillBtn.Text = "Mass Kill (Убить всех ножом) [Биз: Нет]"
+        massKillBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+local gunAuraActive = false
+local function toggleGunAura()
+    gunAuraActive = not gunAuraActive
+    if gunAuraActive then
+        gunAuraBtn.Text = "Gun Aura: АКТИВНА"
+        gunAuraBtn.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+        task.spawn(function()
+            while gunAuraActive do
+                local char = player.Character
+                local gun = char and (char:FindFirstChild("Gun") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Gun")))
+                if gun then
+                    if gun.Parent ~= char then gun.Parent = char end
+                    local murdererChar = findPlayerByRole("Murderer")
+                    if murdererChar and murdererChar:FindFirstChild("HumanoidRootPart") then
+                        local mRoot = murdererChar.HumanoidRootPart
+                        local remote = gun:FindFirstChild("KnifeServer") or gun:FindFirstChild("ShootGun") or gun:FindFirstChild("RemoteEvent")
+                        if remote and remote:IsA("RemoteEvent") then
+                            remote:FireServer(mRoot.Position)
+                        elseif gun:FindFirstChild("Handle") then
+                            firetouchinterest(gun.Handle, mRoot, 0)
+                            firetouchinterest(gun.Handle, mRoot, 1)
+                        end
+                    end
+                end
+                task.wait(0.2)
+            end
+            gunAuraBtn.Text = "Gun Aura (Авто-выстрел в мардера) [Биз: Нет]"
+            gunAuraBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+        end)
+    else
+        gunAuraBtn.Text = "Gun Aura (Авто-выстрел в мардера) [Биз: Нет]"
+        gunAuraBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+    end
+end
+
+tpGunBtn.MouseButton1Click:Connect(function() if not bindingAction then tpToGun() end end)
+tpMurderBtn.MouseButton1Click:Connect(function() if not bindingAction then tpToMurder() end end)
+tpSheriffBtn.MouseButton1Click:Connect(function() if not bindingAction then tpToSheriff() end end)
+tpRandomBtn.MouseButton1Click:Connect(function() if not bindingAction then tpToRandom() end end)
+rvankaBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleRvanka() end end)
+noclipBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleNoclip() end end)
+infJumpBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleInfJump() end end)
+alwaysAnimBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleAlwaysAnim() end end)
+autoGunBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleAutoGun() end end)
+auraBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleAura() end end)
+massKillBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleMassKill() end end)
+gunAuraBtn.MouseButton1Click:Connect(function() if not bindingAction then toggleGunAura() end end)
+
+tpGunBtn.MouseButton2Click:Connect(function() bindingAction = "TPGun"; tpGunBtn.Text = "Нажми кнопку..." end)
+tpMurderBtn.MouseButton2Click:Connect(function() bindingAction = "TPMurder"; tpMurderBtn.Text = "Нажми кнопку..." end)
+tpSheriffBtn.MouseButton2Click:Connect(function() bindingAction = "TPSheriff"; tpSheriffBtn.Text = "Нажми кнопку..." end)
+tpRandomBtn.MouseButton2Click:Connect(function() bindingAction = "TPRandom"; tpRandomBtn.Text = "Нажми кнопку..." end)
+rvankaBtn.MouseButton2Click:Connect(function() bindingAction = "Rvanka"; rvankaBtn.Text = "Нажми кнопку..." end)
+noclipBtn.MouseButton2Click:Connect(function() bindingAction = "Noclip"; noclipBtn.Text = "Нажми кнопку..." end)
+infJumpBtn.MouseButton2Click:Connect(function() bindingAction = "InfJump"; infJumpBtn.Text = "Нажми кнопку..." end)
+alwaysAnimBtn.MouseButton2Click:Connect(function() bindingAction = "AlwaysAnim"; alwaysAnimBtn.Text = "Нажми кнопку..." end)
+autoGunBtn.MouseButton2Click:Connect(function() bindingAction = "AutoGun"; autoGunBtn.Text = "Нажми кнопку..." end)
+auraBtn.MouseButton2Click:Connect(function() bindingAction = "KnifeAura"; auraBtn.Text = "Нажми кнопку..." end)
+massKillBtn.MouseButton2Click:Connect(function() bindingAction = "MassKill"; massKillBtn.Text = "Нажми кнопку..." end)
+gunAuraBtn.MouseButton2Click:Connect(function() bindingAction = "GunAura"; gunAuraBtn.Text = "Нажми кнопку..." end)
+
+clearBindsBtn.MouseButton1Click:Connect(function()
+    for k in pairs(keybinds) do keybinds[k] = nil end
+    tpGunBtn.Text = "ТП к пистолету [Биз: Нет]"
+    tpMurderBtn.Text = "ТП к мардеру [Биз: Нет]"
+    tpSheriffBtn.Text = "ТП к шерифу [Биз: Нет]"
+    tpRandomBtn.Text = "ТП по кругу [Биз: Нет]"
+    rvankaBtn.Text = "Рванка [Биз: Нет]"
+    noclipBtn.Text = "Noclip (Сквозь стены): Выкл"
+    infJumpBtn.Text = "Infinity Jump (Прыжки): Выкл"
+    alwaysAnimBtn.Text = "Эмоции при беге: Выкл"
+    autoGunBtn.Text = "Авто-Ган: Выкл"
+    auraBtn.Text = "Knife Aura (300) [Биз: Нет]"
+    massKillBtn.Text = "Mass Kill (Убить всех ножом) [Биз: Нет]"
+    gunAuraBtn.Text = "Gun Aura (Авто-выстрел в мардера) [Биз: Нет]"
+    toggleAimbotBtn.Text = "Аимбот: Выкл"
+    aimbotSettings.Enabled = false
+    rvankaActive = false noclipActive = false infJumpActive = false alwaysAnimActive = false autoGunActive = false auraActive = false massKillActive = false gunAuraActive = false
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == TOGGLE_MENU_KEY then
+        if not screenGui:FindFirstChild("KeySystemFrame") then
+            toggleMenuAnimation()
+        end
+        return
+    end
+
+    if bindingAction then
+        local assigned = nil
+        if input.UserInputType == Enum.UserInputType.Keyboard then assigned = input.KeyCode
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.MouseButton3 then
+            assigned = input.UserInputType
+        end
+        if assigned then
+            keybinds[bindingAction] = assigned
+            local nameStr = tostring(assigned):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
+            if bindingAction == "TPGun" then tpGunBtn.Text = "ТП к пистолету [" .. nameStr .. "]"
+            elseif bindingAction == "TPMurder" then tpMurderBtn.Text = "ТП к мардеру [" .. nameStr .. "]"
+            elseif bindingAction == "TPSheriff" then tpSheriffBtn.Text = "ТП к шерифу [" .. nameStr .. "]"
+            elseif bindingAction == "TPRandom" then tpRandomBtn.Text = "ТП по кругу [" .. nameStr .. "]"
+            elseif bindingAction == "Rvanka" then rvankaBtn.Text = "Рванка [" .. nameStr .. "]"
+            elseif bindingAction == "Noclip" then noclipBtn.Text = "Noclip [" .. nameStr .. "]"
+            elseif bindingAction == "InfJump" then noclipBtn.Text = "Inf Jump [" .. nameStr .. "]"
+            elseif bindingAction == "AlwaysAnim" then alwaysAnimBtn.Text = "Эмоции [" .. nameStr .. "]"
+            elseif bindingAction == "AutoGun" then autoGunBtn.Text = "Авто-Ган [" .. nameStr .. "]"
+            elseif bindingAction == "KnifeAura" then auraBtn.Text = "Knife Aura [" .. nameStr .. "]"
+            elseif bindingAction == "MassKill" then massKillBtn.Text = "Mass Kill [" .. nameStr .. "]"
+            elseif bindingAction == "GunAura" then gunAuraBtn.Text = "Gun Aura [" .. nameStr .. "]"
+            elseif bindingAction == "Aimbot" then toggleAimbotBtn.Text = "Аимбот [" .. nameStr .. "]" end
+            bindingAction = nil
+        end
+        return
+    end
+    if gameProcessed then return end
+
+    for action, key in pairs(keybinds) do
+        if key and (input.KeyCode == key or input.UserInputType == key) then
+            if action == "TPGun" then tpToGun()
+            elseif action == "TPMurder" then tpToMurder()
+            elseif action == "TPSheriff" then tpToSheriff()
+            elseif action == "TPRandom" then tpToRandom()
+            elseif action == "Rvanka" then toggleRvanka()
+            elseif action == "Noclip" then toggleNoclip()
+            elseif action == "InfJump" then toggleInfJump()
+            elseif action == "AlwaysAnim" then toggleAlwaysAnim()
+            elseif action == "AutoGun" then toggleAutoGun()
+            elseif action == "KnifeAura" then toggleAura()
+            elseif action == "MassKill" then toggleMassKill()
+            elseif action == "GunAura" then toggleGunAura()
+            elseif action == "Aimbot" then
+                aimbotSettings.Enabled = not aimbotSettings.Enabled
+                toggleAimbotBtn.Text = aimbotSettings.Enabled and "Аимбот: Вкл" or "Аимбот: Выкл"
+                toggleAimbotBtn.BackgroundColor3 = aimbotSettings.Enabled and Color3.fromRGB(35, 65, 45) or Color3.fromRGB(20, 24, 32)
+            end
+        end
+    end
+end)
+
+local activeESP = {}
+local function createESP(targetPlayer)
+    if targetPlayer == player then return end
+    local box = Drawing.new("Square") box.Visible = false box.Thickness = 1.5 box.Filled = false
+    local tracer = Drawing.new("Line") tracer.Visible = false tracer.Thickness = 1
+    local text = Drawing.new("Text") text.Visible = false text.Size = 13 text.Center = true text.Outline = true
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Lunix_Highlight"
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.6
+    highlight.Enabled = false
+
+    activeESP[targetPlayer] = {Box = box, Tracer = tracer, Text = text, Highlight = highlight}
+    
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        local char = targetPlayer.Character
+        local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        
+        if not espSettings.Enabled or not char or not rootPart or not humanoid or humanoid.Health <= 0 then
+            box.Visible = false tracer.Visible = false text.Visible = false highlight.Enabled = false
+            return
+        end
+        
+        if highlight.Parent ~= char then highlight.Parent = char end
+        
+        local backpack = targetPlayer:FindFirstChild("Backpack")
+        local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+        local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+        
+        local roleColor = Color3.fromRGB(0, 200, 0)
+        if hasKnife then roleColor = Color3.fromRGB(220, 40, 40)
+        elseif hasGun then roleColor = Color3.fromRGB(40, 100, 220) end
+        
+        if espSettings.Highlight then
+            highlight.Enabled = true highlight.FillColor = roleColor highlight.OutlineColor = roleColor
+        else highlight.Enabled = false end
+        
+        local vector, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        if onScreen then
+            local head = char:FindFirstChild("Head")
+            local topPos = head and Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0)) or vector
+            local bottomPos = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
+            local height = math.abs(topPos.Y - bottomPos.Y)
+            local width = height / 2
+            
+            if espSettings.Boxes then
+                box.Visible = true box.Size = Vector2.new(width, height) box.Position = Vector2.new(vector.X - width / 2, topPos.Y) box.Color = roleColor
+            else box.Visible = false end
+            
+            -- Исправлено: espSettings.Tabs заменено на espSettings.Tracers
+            if espSettings.Tracers then
+                tracer.Visible = true tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) tracer.To = Vector2.new(vector.X, bottomPos.Y) tracer.Color = roleColor
+            else tracer.Visible = false end
+            
+            local displayText = ""
+            if espSettings.Names then displayText = targetPlayer.Name end
+            if espSettings.Distance and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local dist = math.floor((player.Character.HumanoidRootPart.Position - rootPart.Position).Magnitude)
+                displayText = displayText .. " [" .. dist .. "m]"
+            end
+            
+            if (espSettings.Names or espSettings.Distance) and displayText ~= "" then
+                text.Visible = true text.Text = displayText text.Position = Vector2.new(vector.X, topPos.Y - 16) text.Color = roleColor
+            else text.Visible = false end
+        else
+            box.Visible = false tracer.Visible = false text.Visible = false
+        end
+    end)
+    
+    targetPlayer.Destroying:Connect(function()
+        if connection then connection:Disconnect() end
+        box:Remove() tracer:Remove() text:Remove() highlight:Destroy()
+        activeESP[targetPlayer] = nil
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
